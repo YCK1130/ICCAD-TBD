@@ -65,9 +65,17 @@ def parse_netlist(netlist_str: str) -> dict:
         gates=';\n\t'.join(gates), end=end)
     return cleaned_netlist
 
+def seperate_lines(lines: str)-> list[str]:
+    try:
+        return lines.decode("utf-8").strip().split('\n')
+    except Exception as e:
+        print(f"Error running [seperate_lines]: {e}")
+        raise
 
 class TmpDir:
     def __init__(self, tmp_dir: Path):
+        if isinstance(tmp_dir, str):
+            tmp_dir = Path(tmp_dir)
         self.tmp_dir = tmp_dir
 
     def __enter__(self):
@@ -78,4 +86,6 @@ class TmpDir:
         if exc_type:
             print(f"Error: {exc_val}")
             print(f"Traceback: {exc_tb}")
+        for file in self.tmp_dir.iterdir():
+            file.unlink(missing_ok=True)
         self.tmp_dir.rmdir()
