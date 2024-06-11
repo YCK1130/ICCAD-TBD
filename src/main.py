@@ -46,3 +46,4 @@ if __name__ == "__main__":
     name_cost = gate_cost_estimator(f"{args.outdir}/test.json", args.library, args.cost_function)
     print("All gate costs estimated successfully!")
     generate_lib_file(name_cost, f"../data/lib/optimized_lib.lib")
+    print(f"Writing to ../data/lib/optimized_lib.lib successfully!")
