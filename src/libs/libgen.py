@@ -1,9 +1,32 @@
 import json
 import subprocess
 import tqdm
-from utils import parse_lib, parse_netlist
 import argparse
 from pathlib import Path
+
+def generate_1_input_verilog_file(gate_name, output_filename):
+    # Define the header of the .v file
+    verilog_header = """module top_809960632_810038711_1598227639_893650103(a, o);
+    input a;
+    output o;
+"""
+
+    # Initialize content with the header
+    verilog_content = [verilog_header]
+
+    # Create instance for the given gate name
+    instance = f"    {gate_name} g0(a, o);\n"
+    verilog_content.append(instance)
+
+    # Close the module
+    verilog_content.append("endmodule\n")
+
+    # Join the content into a single string
+    final_content = ''.join(verilog_content)
+
+    # Write the content to the output file
+    with open(output_filename, 'w') as file:
+        file.write(final_content)
 
 def generate_2_input_verilog_file(gate_name, output_filename):
     # Define the header of the .v file
@@ -28,16 +51,25 @@ def generate_2_input_verilog_file(gate_name, output_filename):
     with open(output_filename, 'w') as file:
         file.write(final_content)
 
-def gate_cost_estimator(libPath, cost_estimator):
-    with open(libPath, 'r') as f:
+def gate_cost_estimator(parsedLib, oriLib, cost_estimator):
+    name_cost = []
+    with open(parsedLib, 'r') as f:
         lib = json.load(f)
     for cell in lib['types']:
-        if(cell != 'buf' and cell != 'not'):
-            for cell_name in lib['types'][cell]:
-                generate_2_input_verilog_file(cell_name, f'../../data/verilog/{cell_name}.v')
-                proc = subprocess.check_output([cost_estimator, ' -library', libPath, ' -netlist ', f'../../data/verilog/{cell_name}.v', ' -output ', f'../../data/cost/{cell_name}.out'])
-                line = proc.decode("utf-8").split('\n')
-                print(line)
+        name_cost.append((cell, 0))
+        for cell_name in lib['types'][cell]:
+            print(cell_name)
+            if(cell != 'buf' and cell != 'not'):
+                generate_2_input_verilog_file(cell_name, f'../data/verilog/{cell_name}.v')
+            else:
+                generate_1_input_verilog_file(cell_name, f'../data/verilog/{cell_name}.v')
+            proc = subprocess.check_output([cost_estimator, '-library', f'{oriLib}', '-netlist', f'../data/verilog/{cell_name}.v', '-output', f'../data/cost/{cell_name}.out'])
+            line = proc.decode("utf-8").split('\n')
+            cost = float(line[0].split('=')[1].strip())
+            print(cost)
+            if name_cost[-1][1] > cost or not name_cost[-1][1]:
+                name_cost[-1] = (cell_name, cost)
+    return name_cost
     # return data
 
 def generate_lib_file(new_names_areas, output_filename):
@@ -98,17 +130,7 @@ library(demo) {
         file.write(final_content)
 
 if __name__ == "__main__":
-    gate_cost_estimator('../../data/parsed/test.json', '../../release/cost_estimators/cost_estimator_1')
-    # new_names_areas = [
-    #     ('buf_1', 7),
-    #     ('not_1', 3.5),
-    #     ('nand_1', 4.5),
-    #     ('nor_1', 4.2),
-    #     ('or_1', 4.8),
-    #     ('and_1', 4.1),
-    #     ('xor_1', 5.2),
-    #     ('xnor_1', 5.5)
-    # ]
-    # output_filename = 'generated_example.lib'
+    name_cost = gate_cost_estimator('../../data/parsed/test.json', '../../release/lib/lib1.json', '../../release/cost_estimators/cost_estimator_1')
+    output_filename = 'generated_example.lib'
 
-    # generate_lib_file(new_names_areas, output_filename)
+    generate_lib_file(name_cost, output_filename)

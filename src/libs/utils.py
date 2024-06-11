@@ -29,7 +29,7 @@ def parse_lib(lib: dict) -> dict:
         }
     '''
     data = {}
-    data['info'] = lib['information']
+    data['information'] = lib['information']
     data['types'] = {}
     data['cells'] = {}
     lib_cells = lib['cells']

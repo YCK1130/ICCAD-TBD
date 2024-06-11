@@ -2,6 +2,7 @@ import json
 import subprocess
 import tqdm
 from libs.utils import parse_lib, parse_netlist
+from libs.libgen import gate_cost_estimator, generate_lib_file
 import argparse
 from pathlib import Path
 
@@ -41,3 +42,7 @@ if __name__ == "__main__":
     cleaned_netlist = parse_netlist(netlist_str)
     with open(f"{args.outdir}/netlist_cleaned.v", 'w') as f:
         f.write(cleaned_netlist)
+
+    name_cost = gate_cost_estimator(f"{args.outdir}/test.json", args.library, args.cost_function)
+    print("All gate costs estimated successfully!")
+    generate_lib_file(name_cost, f"../data/lib/optimized_lib.lib")
