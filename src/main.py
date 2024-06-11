@@ -3,6 +3,7 @@ import subprocess
 import tqdm
 from libs.utils import parse_lib, parse_netlist
 from libs.libgen import gate_cost_estimator, generate_lib_file
+from libs.yosysCmd import verilog_to_aig
 import argparse
 from pathlib import Path
 
@@ -19,7 +20,7 @@ def parse_args():
                         help='Cost function to optimize')
     parser.add_argument('-output', type=str, default='design_optimized.v', required=all_required,
                         help='Path to the output optimized netlist file')
-    parser.add_argument('--outdir', '-od', type=str, default='../data/parsed/',
+    parser.add_argument('--outdir', '-od', type=str, default='../data/',
                         help='Path to the output directory')
     return parser.parse_args()
 
@@ -32,21 +33,23 @@ if __name__ == "__main__":
     data = parse_lib(lib)
     if not Path(args.outdir).exists():
         Path(args.outdir).mkdir(parents=True, exist_ok=True)
-    with open(f"{args.outdir}/test.json", 'w') as f:
+    with open(f"{args.outdir}/parsed/test.json", 'w') as f:
         json.dump(data, f, indent=4)
     print("All libraries parsed successfully!")
-    print(f"Writing to {args.outdir}/test.json")
+    print(f"Writing to {args.outdir}/parsed/test.json")
 
     with open(args.netlist, 'r') as f:
         netlist_str = f.read()
     cleaned_netlist = parse_netlist(netlist_str)
-    with open(f"{args.outdir}/netlist_cleaned.v", 'w') as f:
+    with open(f"{args.outdir}/parsed/netlist_cleaned.v", 'w') as f:
         f.write(cleaned_netlist)
 
-    name_cost = gate_cost_estimator(f"{args.outdir}/test.json", args.library, args.cost_function)
+    name_cost = gate_cost_estimator(f"{args.outdir}/parsed/test.json", args.library, args.cost_function)
     print("All gate costs estimated successfully!")
-    generate_lib_file(name_cost, f"../data/lib/optimized_lib.lib")
-    print(f"Writing to ../data/lib/optimized_lib.lib successfully!")
+    generate_lib_file(name_cost, f"{args.outdir}/lib/optimized_lib.lib")
+    print(f"Writing to {args.outdir}/lib/optimized_lib.lib")
+
+    verilog_to_aig(args.netlist, f"{args.outdir}/aig/netlist.aig")
 
 # sample command: 
 # python3 main.py -library ../release/lib/lib1.json -netlist ../release/netlists/design1.v -cost_function ../release/cost_estimators/cost_estimator_1

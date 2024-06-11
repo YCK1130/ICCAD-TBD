@@ -55,6 +55,11 @@ def gate_cost_estimator(parsedLib, oriLib, cost_estimator):
     name_cost = []
     with open(parsedLib, 'r') as f:
         lib = json.load(f)
+    if not Path('../data/verilog').exists():
+        Path('../data/verilog').mkdir(parents=True, exist_ok=True)
+    if not Path('../data/cost').exists():
+        Path('../data/cost').mkdir(parents=True, exist_ok=True)
+        
     for cell in lib['types']:
         name_cost.append((cell, 0))
         for cell_name in lib['types'][cell]:
