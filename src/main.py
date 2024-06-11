@@ -5,7 +5,7 @@ import argparse
 import numpy as np
 from libs.utils import parse_lib, parse_netlist, TmpDir
 from libs.libgen import gate_cost_estimator, generate_lib_file
-from libs.yosysCmd import verilog_to_aig, aig_to_netlist, improve_aig
+from libs.yosysCmd import AigBase
 from libs.cost_estimator import cost_estimator
 from libs.abc_commands import ACTION_SPACE
 from pathlib import Path
@@ -32,55 +32,22 @@ np.random.seed(SEED)
 if __name__ == "__main__":
     args = parse_args()
 
-    with open(args.library, 'r') as f:
-        lib = json.load(f)
-    data = parse_lib(lib)
-    print("All libraries parsed successfully!")
-    with TmpDir(f'{args.outdir}/parsed'):
-        print(f"Writing to {args.outdir}/parsed/test.json")
-        if not Path(args.outdir).exists():
-            Path(args.outdir).mkdir(parents=True, exist_ok=True)
-        with open(f"{args.outdir}/parsed/test.json", 'w') as f:
-            json.dump(data, f, indent=4)
-        
-        print(f"Reading Netlist from {args.netlist}")
-        with open(args.netlist, 'r') as f:
-            netlist_str = f.read()
-        cleaned_netlist = parse_netlist(netlist_str)
-        print(f"Writing to {args.outdir}/parsed/netlist_cleaned.v")
-        with open(f"{args.outdir}/parsed/netlist_cleaned.v", 'w') as f:
-            f.write(cleaned_netlist)
-
-        # Generate a list of best pairs(gate names, min costs) for each gate type
-        name_cost = gate_cost_estimator(f"{args.outdir}/parsed/test.json", args.library, args.cost_function)
-        print("All gate costs estimated successfully!")
-
-        # Generate the optimized lib file with the name_cost pairs
-        print(f"Writing to {args.outdir}/lib/optimized_lib.lib")
-        if not Path(f'{args.outdir}/lib').exists():
-            Path(f'{args.outdir}/lib').mkdir(parents=True, exist_ok=True)
-        generate_lib_file(name_cost, f"{args.outdir}/lib/optimized_lib.lib")
-
+    agent = AigBase(outdir = args.outdir, netlist=args.netlist, cost_function=args.cost_function)
+    agent.generate_optimized_lib(args.library)
+    module_name = agent.get_module_names(args.netlist)
     # Convert the netlist to AIG format
     print("Converting netlist to AIG format...")
-    if not Path(f'{args.outdir}/aigers').exists():
-            Path(f'{args.outdir}/aigers').mkdir(parents=True, exist_ok=True)
-    module_name = verilog_to_aig(args.netlist, f"{args.outdir}/aigers/netlist.aig")
+    agent.verilog_to_aig(args.netlist, f"{args.outdir}/aigers/netlist.aig")
 
     print("Improving...")
-
-
-    for i in tqdm.trange(1000):
+    for i in tqdm.trange(10):
         commands = np.random.choice(ACTION_SPACE, 1)
-        improve_aig(f"{args.outdir}/aigers/netlist.aig", [c for c in commands])
-        # Convert the AIG to netlist with the optimized lib
-        # print("Converting AIG to netlist...")
-    aig_to_netlist(f"{args.outdir}/aigers/netlist.aig", f"{args.outdir}/lib/optimized_lib.lib", args.output, module_name)
-
+        agent.improve_aig(f"{args.outdir}/aigers/netlist.aig", [c for c in commands])
+    
+    agent.aig_to_netlist(f"{args.outdir}/aigers/netlist.aig", f"{args.outdir}/lib/optimized_lib.lib", args.output, module_name)
     # Estimate the cost of the optimized netlist
     cost = cost_estimator(args.output, args.library, args.cost_function)
         # print(f"{command} cost: {cost}")
-        
     print(f"Final cost: {cost}")
     
 # sample command: 
