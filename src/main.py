@@ -3,7 +3,8 @@ import subprocess
 import tqdm
 from libs.utils import parse_lib, parse_netlist
 from libs.libgen import gate_cost_estimator, generate_lib_file
-from libs.yosysCmd import verilog_to_aig
+from libs.yosysCmd import verilog_to_aig, aig_to_netlist
+from libs.cost_estimator import cost_estimator
 import argparse
 from pathlib import Path
 
@@ -20,7 +21,7 @@ def parse_args():
                         help='Cost function to optimize')
     parser.add_argument('-output', type=str, default='design_optimized.v', required=all_required,
                         help='Path to the output optimized netlist file')
-    parser.add_argument('--outdir', '-od', type=str, default='../data/',
+    parser.add_argument('--outdir', '-od', type=str, default='../data',
                         help='Path to the output directory')
     return parser.parse_args()
 
@@ -49,7 +50,13 @@ if __name__ == "__main__":
     generate_lib_file(name_cost, f"{args.outdir}/lib/optimized_lib.lib")
     print(f"Writing to {args.outdir}/lib/optimized_lib.lib")
 
-    verilog_to_aig(args.netlist, f"{args.outdir}/aig/netlist.aig")
+    print("Converting netlist to AIG format...")
+    module_name = verilog_to_aig(args.netlist, f"{args.outdir}/netlist.aig")
 
+    print("Converting AIG to netlist...")
+    aig_to_netlist(f"{args.outdir}/netlist.aig", f"{args.outdir}/lib/optimized_lib.lib", args.output, module_name)
+
+    cost = cost_estimator(args.output, args.library, args.cost_function)
+    print(f"Final cost: {cost}")
 # sample command: 
 # python3 main.py -library ../release/lib/lib1.json -netlist ../release/netlists/design1.v -cost_function ../release/cost_estimators/cost_estimator_1

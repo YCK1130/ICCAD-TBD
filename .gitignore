@@ -1,7 +1,8 @@
 # data
-data/verilog/
-data/cost/
-data/lib
+data/verilog/*
+data/cost/*
+data/lib/*
+data/parsed/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
