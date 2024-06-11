@@ -36,7 +36,7 @@ class AigBase:
                  ) -> None:
         self.outdir = outdir
         self.parseDir = f'{outdir}/parsed'
-        self.aigerDir = f'{outdir}/aiger'
+        self.aigerDir = f'{outdir}/aigers'
         self.libDir = f'{self.outdir}/lib'
         for d in [self.parseDir, self.aigerDir, self.libDir]:
             Path(d).mkdir(parents=True, exist_ok=True)
