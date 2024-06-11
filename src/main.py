@@ -19,7 +19,7 @@ def parse_args():
                         help='Cost function to optimize')
     parser.add_argument('-output', type=str, default='design_optimized.v', required=all_required,
                         help='Path to the output optimized netlist file')
-    parser.add_argument('--outdir', '-od', type=str, default='data/parsed/',
+    parser.add_argument('--outdir', '-od', type=str, default='../data/parsed/',
                         help='Path to the output directory')
     return parser.parse_args()
 
