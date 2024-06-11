@@ -58,7 +58,7 @@ def gate_cost_estimator(parsedLib, oriLib, cost_estimator):
     for cell in lib['types']:
         name_cost.append((cell, 0))
         for cell_name in lib['types'][cell]:
-            print(cell_name)
+            # print(cell_name)
             if(cell != 'buf' and cell != 'not'):
                 generate_2_input_verilog_file(cell_name, f'../data/verilog/{cell_name}.v')
             else:
@@ -66,9 +66,11 @@ def gate_cost_estimator(parsedLib, oriLib, cost_estimator):
             proc = subprocess.check_output([cost_estimator, '-library', f'{oriLib}', '-netlist', f'../data/verilog/{cell_name}.v', '-output', f'../data/cost/{cell_name}.out'])
             line = proc.decode("utf-8").split('\n')
             cost = float(line[0].split('=')[1].strip())
-            print(cost)
+            # print(cost)
             if name_cost[-1][1] > cost or not name_cost[-1][1]:
                 name_cost[-1] = (cell_name, cost)
+    subprocess.run(['rm -rf ../data/verilog/*'], shell=True)
+    subprocess.run(['rm -rf ../data/cost/*'], shell=True)
     return name_cost
     # return data
 

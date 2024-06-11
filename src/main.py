@@ -47,3 +47,6 @@ if __name__ == "__main__":
     print("All gate costs estimated successfully!")
     generate_lib_file(name_cost, f"../data/lib/optimized_lib.lib")
     print(f"Writing to ../data/lib/optimized_lib.lib successfully!")
+
+# sample command: 
+# python3 main.py -library ../release/lib/lib1.json -netlist ../release/netlists/design1.v -cost_function ../release/cost_estimators/cost_estimator_1
