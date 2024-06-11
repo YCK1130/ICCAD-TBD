@@ -45,18 +45,25 @@ if __name__ == "__main__":
     with open(f"{args.outdir}/parsed/netlist_cleaned.v", 'w') as f:
         f.write(cleaned_netlist)
 
+    # Generate a list of best pairs(gate names, min costs) for each gate type
     name_cost = gate_cost_estimator(f"{args.outdir}/parsed/test.json", args.library, args.cost_function)
     print("All gate costs estimated successfully!")
+
+    # Generate the optimized lib file with the name_cost pairs
     generate_lib_file(name_cost, f"{args.outdir}/lib/optimized_lib.lib")
     print(f"Writing to {args.outdir}/lib/optimized_lib.lib")
 
+    # Convert the netlist to AIG format
     print("Converting netlist to AIG format...")
     module_name = verilog_to_aig(args.netlist, f"{args.outdir}/netlist.aig")
 
+    # Convert the AIG to netlist with the optimized lib
     print("Converting AIG to netlist...")
     aig_to_netlist(f"{args.outdir}/netlist.aig", f"{args.outdir}/lib/optimized_lib.lib", args.output, module_name)
 
+    # Estimate the cost of the optimized netlist
     cost = cost_estimator(args.output, args.library, args.cost_function)
     print(f"Final cost: {cost}")
+    
 # sample command: 
 # python3 main.py -library ../release/lib/lib1.json -netlist ../release/netlists/design1.v -cost_function ../release/cost_estimators/cost_estimator_1
