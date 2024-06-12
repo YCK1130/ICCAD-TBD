@@ -3,8 +3,13 @@ import subprocess
 import platform
 from libs.utils import parse_lib, parse_netlist, TmpDir, seperate_lines
 from libs.libgen import gate_cost_estimator, generate_lib_file
+from libs.cost_estimator import cost_estimator
 from pathlib import Path
+import numpy as np
 import json
+import math
+import random
+import timeit
 # Determine current architecture and set paths for Yosys and ABC
 arch = platform.machine()
 print(f"Current architecture: {arch}")
@@ -33,6 +38,7 @@ class AigBase:
                  outdir: str,
                  netlist: str = None,
                  cost_function:str,
+                 stdlib: str = None
                  ) -> None:
         self.outdir = outdir
         self.parseDir = f'{outdir}/parsed'
@@ -43,6 +49,7 @@ class AigBase:
         
         self.netlist = netlist
         self.cost_function = cost_function
+        self.stdlib = stdlib
         self.module_name = None
         
     def get_module_names(self, verilog_file):
@@ -50,6 +57,7 @@ class AigBase:
         yosys_command = [yosys, '-p', yosys_script]
         try:
             output = subprocess.check_output(yosys_command, stderr=subprocess.STDOUT).decode()
+            self.module_name = self.parse_module_names(output)
             return self.parse_module_names(output)
         except subprocess.CalledProcessError as e:
             print(f"Error running Yosys: {e.output.decode()}")
@@ -76,6 +84,95 @@ class AigBase:
         results = seperate_lines(proc)
         if 'Networks are equivalent' in results[-1]:
             Path(new_aig_file).replace(aig_file)
+
+    def improve_aig_simulated_annealing(self, aig_file: str, commands: list, temperature, cooling_rate):
+        if '.aig' in aig_file:
+            filename = aig_file.split('.aig')[0]
+        else:
+            filename = aig_file
+        new_aig_file = f"{filename}_new.aig"
+
+        i = 0
+        start = timeit.default_timer()
+        # run the optimization once to set the initial energy (cost) of the system
+        print('Initializing annealing ..')
+        print('Current temperature: ' + str(temperature))
+        print('----------------')
+        self.aig_to_netlist(aig_file, f"{self.libDir}/optimized_lib.lib", f"{self.outdir}/netlist.v", self.module_name)
+        cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function)
+        current_design_file = aig_file
+        previous_cost = cost
+        i += 1
+        print('System initialized with cost: ' + str(cost))
+        print('Starting annealing ..')
+        print()
+        while True:
+            number_of_accepted_optimizations = 0
+
+            for _ in range(100):
+                # if we accept 10 optimizations, we cool down the system
+                # otherwise, only continue up to 100 trials for this temperature
+                print('Iteration: ' + str(i))
+                print('Temperature: ' + str(temperature))
+                print('Current cost: ' + str(previous_cost))
+                print('----------------')
+            
+            
+                # Pick an optimization at random
+                # random_optimization = random.choice(optimizations)
+                abc_command = f"read_aiger {current_design_file}; {'; '.join(np.random.choice(commands, 3))};cec {current_design_file}; write_aiger {new_aig_file}"
+                proc = subprocess.check_output([abc_binary, "-q", abc_command], stderr=subprocess.STDOUT)
+                results = seperate_lines(proc)
+                if 'Networks are equivalent' in results[-1]:
+                    nxt_design_file = new_aig_file
+
+                self.aig_to_netlist(nxt_design_file, f"{self.libDir}/optimized_lib.lib", f"{self.outdir}/netlist.v", self.module_name)
+                cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function)
+                
+
+                # if better than the previous cost, accept. Otherwise, accept with probability
+                if cost < previous_cost:
+                    print('The optimization reduced the cost!')
+                    print('Accepting it ..')
+                    print('Cost reduced from ' + str(previous_cost) + ' to ' + str(cost))
+                    current_design_file = nxt_design_file
+                    previous_cost = cost
+                    number_of_accepted_optimizations += 1
+                else:
+                    delta_cost = cost - previous_cost
+                    probability_of_acceptance = math.exp((- delta_cost) / temperature)
+                    print('The optimization didn\'t reduce the cost, the system looks to be still hot.')
+                    print('The probability of acceptance is: ' + str(probability_of_acceptance))
+                    print('Uniformly generating a number to see if we accept it ..')
+                    if random.uniform(0, 1.0) < probability_of_acceptance:
+                        print('Accepting it ..')
+                        current_design_file = nxt_design_file
+                        previous_cost = cost
+                        number_of_accepted_optimizations += 1
+                    else:
+                        print('Rejected ..')
+                        pass
+                i += 1
+                print()
+
+                if number_of_accepted_optimizations == 10:
+                    break
+
+            if temperature <= 0.1:
+                print('System has sufficiently cooled down ..')
+                print('Shutting down simulation ..')
+                print()
+                break
+
+            new_temperature = temperature * cooling_rate
+            print('Cooling down system from ' + str(temperature) + ' to ' + str(new_temperature) + ' ..')
+            temperature = new_temperature
+            print('================')
+            print()
+
+        stop = timeit.default_timer()
+        Path(new_aig_file).replace(aig_file)
+        print('Total Optimization Time: ' + str(stop - start))
         
     def aig_to_netlist(self, aig_file, lib_file, netlist_file, module_name):
         proc = subprocess.check_output([yosys, "-p", f"read_aiger {aig_file}; abc -exe {abc_binary} -liberty {lib_file}; clean; rename -top {module_name[1:]}; write_verilog -noattr {netlist_file}"])
