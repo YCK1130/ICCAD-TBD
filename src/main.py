@@ -4,6 +4,7 @@ import tqdm
 import argparse
 import numpy as np
 from methods.simulated_annealing import Simulated_Annealing
+from methods.greedy import Greedy
 from libs.abc_commands import ACTION_SPACE, DRILL_SPACE
 from pathlib import Path
 
@@ -31,13 +32,19 @@ if __name__ == "__main__":
     temperature = 3
     cooling_rate = 0.9
 
-    agent = Simulated_Annealing(args.outdir,
+    # agent = Simulated_Annealing(args.outdir,
+    #                             args.cost_function,
+    #                             aig_file=f"{args.outdir}/aigers/netlist.aig",
+    #                             netlist=args.netlist,
+    #                             stdlib = args.library,
+    #                             temperature=temperature,
+    #                             cooling_rate=cooling_rate
+    #                             )
+    agent = Greedy(args.outdir,
                                 args.cost_function,
                                 aig_file=f"{args.outdir}/aigers/netlist.aig",
                                 netlist=args.netlist,
-                                stdlib = args.library,
-                                temperature=temperature,
-                                cooling_rate=cooling_rate
+                                stdlib = args.library
                                 )
     agent.init()
     
@@ -45,9 +52,11 @@ if __name__ == "__main__":
     print("Improving...")
     # for i in tqdm.trange(10):
         # commands = np.random.choice(ACTION_SPACE, 10)
-    agent.learn(f"{args.outdir}/aigers/netlist.aig", ACTION_SPACE, temperature=temperature ,cooling_rate=cooling_rate, 
-                recover = False, verbose=1)
+    # agent.learn(f"{args.outdir}/aigers/netlist.aig", ACTION_SPACE, temperature=temperature ,cooling_rate=cooling_rate, 
+    #             recover = False, verbose=1)
+    agent.learn(f"{args.outdir}/aigers/netlist.aig", ACTION_SPACE)
 
+    # cost = agent.post_learning(f"{args.outdir}/aigers/netlist_best.aig", args.output)
     cost = agent.post_learning(f"{args.outdir}/aigers/netlist_best.aig", args.output)
     print(f"Final cost: {cost}")
     
