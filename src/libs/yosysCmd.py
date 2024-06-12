@@ -103,7 +103,7 @@ class AigBase:
         # # for Debug
         # for line in results:
         #     print(line)
-        if self.state == None or (len(state) == len(self.state) and 
+        if not isinstance(self.state, (list, np.ndarray)) or (len(state) == len(self.state) and 
             any([state[i] != self.state[i] for i in range(len(state))])):
             if replace:
                 self.state = state
@@ -181,7 +181,7 @@ class AigBase:
                     # print(stat)
         return states
     
-    def step(self, action: int | list[int], aig_file=None):
+    def take_step(self, action: int | list[int], aig_file=None):
         if aig_file==None:
             aig_file = self.aig_file
         if isinstance(action, list) or isinstance(action, np.ndarray):
