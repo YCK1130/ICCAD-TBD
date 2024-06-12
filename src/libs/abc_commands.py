@@ -16,8 +16,8 @@ ACTION_SPACE = [
     'resyn3',
     'compress',
     'compress2',
-    'choice',
-    'choice2',
+    # 'choice',
+    # 'choice2',
     'rwsat',
     'drwsat2',
     'share',
@@ -36,7 +36,7 @@ ACTION_SPACE = [
     'r2rs',
     'compress2rs',
     'c2rs',
-],
+]
 
 DRILL_SPACE = [
     'rewrite',

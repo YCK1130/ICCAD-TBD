@@ -3,10 +3,7 @@ import subprocess
 import tqdm
 import argparse
 import numpy as np
-from libs.utils import parse_lib, parse_netlist, TmpDir
-from libs.libgen import gate_cost_estimator, generate_lib_file
-from libs.yosysCmd import AigBase
-from libs.cost_estimator import cost_estimator
+from methods.simulated_annealing import Simulated_Annealing
 from libs.abc_commands import ACTION_SPACE, DRILL_SPACE
 from pathlib import Path
 
@@ -31,27 +28,27 @@ SEED = 1234
 np.random.seed(SEED)
 if __name__ == "__main__":
     args = parse_args()
+    temperature = 3
+    cooling_rate = 0.9
 
-    agent = AigBase(outdir = args.outdir, netlist=args.netlist, cost_function=args.cost_function, aig_file=f"{args.outdir}/aigers/netlist.aig", stdlib = args.library)
-    agent.generate_optimized_lib(args.library)
-    module_name = agent.get_module_names(args.netlist)
-    # Convert the netlist to AIG format
-    print("Converting netlist to AIG format...")
-    agent.verilog_to_aig(args.netlist)
-
-    print("Improving...")
-    for i in tqdm.trange(10):
-        commands = np.random.choice(ACTION_SPACE, 1)
-        agent.improve_aig_simulated_annealing(f"{args.outdir}/aigers/netlist.aig", [c for c in commands])
-
-    # Simmulated Annealing Version
-    # temperature = 3
-    # cooling_rate = 0.9
-    # agent.improve_aig_simulated_annealing(f"{args.outdir}/aigers/netlist.aig", DRILL_SPACE, temperature, cooling_rate)
+    agent = Simulated_Annealing(args.outdir,
+                                args.cost_function,
+                                aig_file=f"{args.outdir}/aigers/netlist.aig",
+                                netlist=args.netlist,
+                                stdlib = args.library,
+                                temperature=temperature,
+                                cooling_rate=cooling_rate
+                                )
+    agent.init()
     
-    agent.aig_to_netlist(f"{args.outdir}/aigers/netlist.aig", f"{args.outdir}/lib/optimized_lib.lib", args.output, module_name)
-    # Estimate the cost of the optimized netlist
-    cost = cost_estimator(args.output, args.library, args.cost_function)
+    # Simmulated Annealing Version
+    print("Improving...")
+    # for i in tqdm.trange(10):
+        # commands = np.random.choice(ACTION_SPACE, 10)
+    agent.learn(f"{args.outdir}/aigers/netlist.aig", ACTION_SPACE, temperature=temperature ,cooling_rate=cooling_rate, 
+                recover = False, verbose=1)
+
+    cost = agent.post_learning(f"{args.outdir}/aigers/netlist_best.aig", args.output)
     print(f"Final cost: {cost}")
     
 # sample command: 
