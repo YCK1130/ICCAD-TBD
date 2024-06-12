@@ -9,6 +9,7 @@ ACTION_SPACE = [
     'resub -z',
     'renode; strash',
     # 'sweep',
+    'collapse; strash',
     'balance',
     'resyn',
     'resyn2',
