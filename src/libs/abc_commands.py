@@ -37,4 +37,14 @@ ACTION_SPACE = [
     'compress2rs',
     'c2rs',
     'recadd3'
+],
+
+DRILL_SPACE = [
+    'rewrite',
+    'rewrite -z',
+    'refactor',
+    'refactor -z',
+    'resub',
+    'resub -z',
+    'balance'
 ]

@@ -7,7 +7,7 @@ from libs.utils import parse_lib, parse_netlist, TmpDir
 from libs.libgen import gate_cost_estimator, generate_lib_file
 from libs.yosysCmd import AigBase
 from libs.cost_estimator import cost_estimator
-from libs.abc_commands import ACTION_SPACE
+from libs.abc_commands import ACTION_SPACE, DRILL_SPACE
 from pathlib import Path
 
 
@@ -32,7 +32,7 @@ np.random.seed(SEED)
 if __name__ == "__main__":
     args = parse_args()
 
-    agent = AigBase(outdir = args.outdir, netlist=args.netlist, cost_function=args.cost_function)
+    agent = AigBase(outdir = args.outdir, netlist=args.netlist, cost_function=args.cost_function, stdlib = args.library)
     agent.generate_optimized_lib(args.library)
     module_name = agent.get_module_names(args.netlist)
     # Convert the netlist to AIG format
@@ -42,7 +42,12 @@ if __name__ == "__main__":
     print("Improving...")
     for i in tqdm.trange(10):
         commands = np.random.choice(ACTION_SPACE, 1)
-        agent.improve_aig(f"{args.outdir}/aigers/netlist.aig", [c for c in commands])
+        agent.improve_aig_simulated_annealing(f"{args.outdir}/aigers/netlist.aig", [c for c in commands])
+
+    # Simmulated Annealing Version
+    # temperature = 3
+    # cooling_rate = 0.9
+    # agent.improve_aig_simulated_annealing(f"{args.outdir}/aigers/netlist.aig", DRILL_SPACE, temperature, cooling_rate)
     
     agent.aig_to_netlist(f"{args.outdir}/aigers/netlist.aig", f"{args.outdir}/lib/optimized_lib.lib", args.output, module_name)
     # Estimate the cost of the optimized netlist
