@@ -32,12 +32,12 @@ np.random.seed(SEED)
 if __name__ == "__main__":
     args = parse_args()
 
-    agent = AigBase(outdir = args.outdir, netlist=args.netlist, cost_function=args.cost_function, stdlib = args.library)
+    agent = AigBase(outdir = args.outdir, netlist=args.netlist, cost_function=args.cost_function, aig_file=f"{args.outdir}/aigers/netlist.aig", stdlib = args.library)
     agent.generate_optimized_lib(args.library)
     module_name = agent.get_module_names(args.netlist)
     # Convert the netlist to AIG format
     print("Converting netlist to AIG format...")
-    agent.verilog_to_aig(args.netlist, f"{args.outdir}/aigers/netlist.aig")
+    agent.verilog_to_aig(args.netlist)
 
     print("Improving...")
     for i in tqdm.trange(10):
@@ -52,7 +52,6 @@ if __name__ == "__main__":
     agent.aig_to_netlist(f"{args.outdir}/aigers/netlist.aig", f"{args.outdir}/lib/optimized_lib.lib", args.output, module_name)
     # Estimate the cost of the optimized netlist
     cost = cost_estimator(args.output, args.library, args.cost_function)
-        # print(f"{command} cost: {cost}")
     print(f"Final cost: {cost}")
     
 # sample command: 

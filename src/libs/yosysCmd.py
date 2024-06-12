@@ -3,6 +3,7 @@ import subprocess
 import platform
 from libs.utils import parse_lib, parse_netlist, TmpDir, seperate_lines
 from libs.libgen import gate_cost_estimator, generate_lib_file
+from libs.abc_commands import ACTION_SPACE
 from libs.cost_estimator import cost_estimator
 from pathlib import Path
 import numpy as np
@@ -36,14 +37,17 @@ class AigBase:
     def __init__(self,
                  *, 
                  outdir: str,
-                 netlist: str = None,
                  cost_function:str,
+                 netlist: str = None,
+                 aig_file:str = None,
+                 lib_file:str = None,
                  stdlib: str = None
                  ) -> None:
         self.outdir = outdir
-        self.parseDir = f'{outdir}/parsed'
-        self.aigerDir = f'{outdir}/aigers'
+        self.parseDir = f'{self.outdir}/parsed'
+        self.aigerDir = f'{self.outdir}/aigers'
         self.libDir = f'{self.outdir}/lib'
+        
         for d in [self.parseDir, self.aigerDir, self.libDir]:
             Path(d).mkdir(parents=True, exist_ok=True)
         
@@ -51,6 +55,11 @@ class AigBase:
         self.cost_function = cost_function
         self.stdlib = stdlib
         self.module_name = None
+        
+        self.aig_file = aig_file if aig_file != None else  f"{self.aigerDir}/netlist.aig"
+        self.lib_file = lib_file if lib_file != None else  f"{self.libDir}/optimized_lib.lib"
+        self.ACTION_SPACE = ACTION_SPACE
+        self.state = None
         
     def get_module_names(self, verilog_file):
         yosys_script = f"read_verilog {verilog_file}; hierarchy -auto-top; ls;"
@@ -68,7 +77,8 @@ class AigBase:
             if line.startswith("Top module:"):
                 module_name = line.split(":")[1].strip()
         return module_name
-    def verilog_to_aig(self, verilog_file, aig_file):
+    def verilog_to_aig(self, verilog_file, aig_file=None):
+        if aig_file == None: aig_file = self.aig_file
         proc = subprocess.check_output([yosys, "-p", f"read_verilog {verilog_file}; aigmap; write_aiger {aig_file}"])
         lines = seperate_lines(proc)
         
@@ -79,12 +89,21 @@ class AigBase:
             filename = aig_file
         new_aig_file = f"{filename}_new.aig"
         assert isinstance(commands, list)
-        abc_command = f"read_aiger {aig_file}; {'; '.join(commands)};cec {aig_file}; write_aiger {new_aig_file}"
+        # if need more information please append after this, and you should handle it in 'extract_state'
+        get_states = ' ; '.join(['ps', 'print_supp']) 
+        abc_command = f"read_aiger {aig_file}; {'; '.join(commands)}; {get_states} ; write_aiger {new_aig_file}"
         proc = subprocess.check_output([abc_binary, "-q", abc_command], stderr=subprocess.STDOUT)
         results = seperate_lines(proc)
-        if 'Networks are equivalent' in results[-1]:
+        
+        state = self.extract_state(results, get_states)
+        # # for Debug
+        # for line in results:
+        #     print(line)
+        if self.state == None or (len(state) == len(self.state) and 
+            any([state[i] != self.state[i] for i in range(len(state))])):
+            self.state = state
             Path(new_aig_file).replace(aig_file)
-
+    
     def improve_aig_simulated_annealing(self, aig_file: str, commands: list, temperature, cooling_rate):
         if '.aig' in aig_file:
             filename = aig_file.split('.aig')[0]
@@ -98,7 +117,7 @@ class AigBase:
         print('Initializing annealing ..')
         print('Current temperature: ' + str(temperature))
         print('----------------')
-        self.aig_to_netlist(aig_file, f"{self.libDir}/optimized_lib.lib", f"{self.outdir}/netlist.v", self.module_name)
+        self.aig_to_netlist(f"{self.outdir}/netlist.v", self.module_name,aig_file=aig_file, lib_file=f"{self.libDir}/optimized_lib.lib")
         cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function)
         current_design_file = aig_file
         previous_cost = cost
@@ -126,7 +145,7 @@ class AigBase:
                 if 'Networks are equivalent' in results[-1]:
                     nxt_design_file = new_aig_file
 
-                self.aig_to_netlist(nxt_design_file, f"{self.libDir}/optimized_lib.lib", f"{self.outdir}/netlist.v", self.module_name)
+                self.aig_to_netlist( f"{self.outdir}/netlist.v", self.module_name, aig_file=nxt_design_file, lib_file=f"{self.libDir}/optimized_lib.lib" )
                 cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function)
                 
 
@@ -172,9 +191,10 @@ class AigBase:
 
         stop = timeit.default_timer()
         Path(new_aig_file).replace(aig_file)
-        print('Total Optimization Time: ' + str(stop - start))
-        
-    def aig_to_netlist(self, aig_file, lib_file, netlist_file, module_name):
+        print('Total Optimization Time: ' + str(stop - start)) 
+    def aig_to_netlist(self, netlist_file, module_name, aig_file=None, lib_file=None):
+        if aig_file == None: aig_file = self.aig_file
+        if lib_file == None: lib_file = self.lib_file
         proc = subprocess.check_output([yosys, "-p", f"read_aiger {aig_file}; abc -exe {abc_binary} -liberty {lib_file}; clean; rename -top {module_name[1:]}; write_verilog -noattr {netlist_file}"])
         # lines = seperate_lines(proc)
     def generate_optimized_lib(self, library: str):
@@ -198,5 +218,54 @@ class AigBase:
             name_cost = gate_cost_estimator(f"{self.parseDir}/test.json", library, self.cost_function)
             print("All gate costs estimated successfully!")
             # Generate the optimized lib file with the name_cost pairs
-            print(f"Writing to {self.libDir}/optimized_lib.lib")
-            generate_lib_file(name_cost, f"{self.libDir}/optimized_lib.lib")
+            print(f"Writing to {self.lib_file}")
+            generate_lib_file(name_cost, self.lib_file)
+    
+    @staticmethod       
+    def extract_state(raw_state: list[str], get_states_cmd: str)-> list[int] :
+        cmds = get_states_cmd.split(' ; ')
+        cmds = [c.strip() for c in cmds]
+        
+        states = []
+        PIs = POs = None
+        for cmd in cmds:
+            if cmd == 'ps':
+                stats = raw_state.pop(0).split(':\x1b[0m')[-1].split(' ')
+                stats = [ s for s in stats if s!='']
+                # [i, o, lat, and, lev]
+                assert stats[0] == 'i/o'
+                # i
+                PIs = int(stats[2].split('/')[0])
+                states.append(PIs)
+                # o
+                POs = int(stats[3])
+                states.append(POs)
+                # lat
+                states.append(int(stats[6]))
+                # and
+                states.append(int(stats[9]))
+                # lev
+                states.append(int(stats[-1]))
+                # print(states)
+            elif cmd == 'print_supp':
+                assert PIs != None and POs != None, 'You should set vitals status first!'
+                raw_state.pop(0)
+                stats = raw_state[:POs]
+                del raw_state[:POs]
+                for stat in stats:
+                    stat = stat.split(':')[-1].split('(')[0].strip().split('.')
+                    stat = [s.split('=')[-1].strip() for s in stat if s.strip()!='']
+                    stat = [int(s) for s in stat]
+                    states += stat
+                    # print(stat)
+        return states
+    
+    def step(self, action: int | list[int], aig_file=None):
+        if aig_file==None:
+            aig_file = self.aig_file
+        if isinstance(action, list) or isinstance(action, np.ndarray):
+            commands = [self.ACTION_SPACE[i] for i in action if 0 <= i and i < len(self.ACTION_SPACE)]
+        elif isinstance(action, int) and 0 <= action and action < len(self.ACTION_SPACE):
+            commands = [self.ACTION_SPACE[action]]
+        self.improve_aig(aig_file, commands)
+        return self.state
