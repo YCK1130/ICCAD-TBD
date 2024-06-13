@@ -54,49 +54,49 @@ class Greedy(AigBase):
             ### 1 ###
             # run every command and choose the best one
             # results = Parallel(n_jobs=len(optimizations))(delayed(run_thread)(iteration_dir, current_design_file, opt) for opt in optimizations)
+            cmd_best_cost = previous_cost         
             for cmd in commands:
-                cmd_best_cost = float('inf') # is it float?
-                # abc_command = f"read_aiger {current_design_file}; {cmd};cec {current_design_file}; write_aiger {new_aig_file}"
-                # proc = subprocess.check_output([abc_binary, "-q", abc_command], stderr=subprocess.STDOUT)
-                # results = seperate_lines(proc)
-                # if 'Networks are equivalent' in results[-1]:
-                #     nxt_design_file = new_aig_file
-
+                # print('Running command: ' + cmd)
+                # cmd_best_cost = previous_cost
                 changed = self.improve_aig(aig_file, [cmd], replace=False)
+                # print(changed)
                 if changed:
+                    # print('changed the state:)')
                     self.aig_to_netlist( f"{self.outdir}/netlist.v", self.module_name, aig_file=new_aig_file, lib_file=f"{self.libDir}/optimized_lib.lib" )
                     cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function)
-                
+                    # print('Cost: ' + str(cost))
                     if cost < cmd_best_cost:
+                        # print('cost = ' + str(cost) + ' < cmd_best_cost = ' + str(cmd_best_cost))
                         cmd_best_cost = cost
                         self.save_best(new_aig_file, best_aig_file)
-                        best_time = timeit.default_timer()
                         best_cmd = cmd
                 # else:
-                #     cost = previous_cost 
+                    # print('didn\'t change the state:(')
     
             ### 2 ###
             #  compare the best cost among iterations
             if cmd_best_cost < previous_cost:
-                print('This iteration reduced the cost!!')
+                # print('This iteration reduced the cost!!')
                 print('Choosing command ' + best_cmd + ' -> cost from: ' + str(previous_cost) +' to ' + str(cmd_best_cost))
                 previous_cost = cmd_best_cost
             
                 # update design file for the next iteration
-                Path(best_aig_file).replace(aig_file)
+                # Path(best_aig_file).replace(aig_file)
+                self.save_best(best_aig_file, aig_file)
+                best = timeit.default_timer()
                 i += 1
                 # print('================')
                 # print()
             else:
                 print('This iteration didn\'t reduce the cost:(')
-                # end
-                break  
+                break   
             
         stop = timeit.default_timer()
 
-        print('Total Optimization Time: ' + str(stop - start))
+        print('best Time: ' + str(best - start))
+        print('run Time: ' + str(stop - start))
         # Path(best_aig_file).replace(aig_file)    
-        return best_cost, best_time - start, stop - start
+        return cmd_best_cost, best_time - start, stop - start
         
 
         
