@@ -63,7 +63,7 @@ if __name__ == "__main__":
         sys.exit(0)
     signal.signal(signal.SIGINT, sigint_handler)
     
-    model.learn(total_timesteps=25000)
+    model.learn(total_timesteps=10000)
     model.save(f"{args.outdir}/a2c_final")
 
     cost, found_time = env.close()

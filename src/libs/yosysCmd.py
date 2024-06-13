@@ -173,7 +173,12 @@ class AigBase:
                 # and
                 states.append(int(stats[9]))
                 # lev
-                states.append(int(stats[-1]))
+                try:
+                    lev = int(stats[12])
+                except:
+                    print(stats)
+                    raise
+                states.append(lev)
                 # print(states)
             elif cmd == 'print_supp':
                 assert PIs != None and POs != None, 'You should set vitals status first!'

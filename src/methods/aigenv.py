@@ -111,9 +111,9 @@ class AigEnv(AigBase, gym.Env):
         if cost < self.run_best_cost:
             self.run_best_cost = cost
             print(f"\rImproving...{cost}", end='')
-            self.last_best_timestamp = timeit.default_timer()
             self.last_best_step = self.current_step
             if self.run_best_cost < self.best_cost:
+                self.last_best_timestamp = timeit.default_timer()
                 self.best_cost = self.run_best_cost
                 self.save_best(self.aig_file, self.best_aig_file)
                 print(f"\rSaving Best... {cost}", end='')

@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 from methods.simulated_annealing import Simulated_Annealing
+from methods.fast_simulated_annealing import Fast_Simulated_Annealing
 from methods.greedy import Greedy
 from libs.abc_commands import ACTION_SPACE
 
@@ -30,7 +31,7 @@ if __name__ == "__main__":
     temperature = 3
     cooling_rate = 0.9
 
-    if args.method.lower() not in ['simulated_annealing', 'simulated annealing', 'sa', 'greedy']:
+    if args.method.lower() not in ['simulated_annealing', 'simulated annealing', 'sa', 'greedy', 'fsa']:
         raise f'Unknown method {args.method}'
     if args.method.lower() == 'greedy':
         agent = Greedy(args.outdir,
@@ -39,6 +40,14 @@ if __name__ == "__main__":
                         netlist=args.netlist,
                         stdlib = args.library
                         )
+    elif args.method.lower() == 'fsa':
+        agent = Fast_Simulated_Annealing(
+            args.outdir,
+            args.cost_function,
+            aig_file=f"{args.outdir}/aigers/netlist.aig",
+            netlist=args.netlist,
+            stdlib = args.library,
+        )
     else: 
         agent = Simulated_Annealing(args.outdir,
                                     args.cost_function,
@@ -56,7 +65,7 @@ if __name__ == "__main__":
         # commands = np.random.choice(ACTION_SPACE, 10)
     # agent.learn(f"{args.outdir}/aigers/netlist.aig", ACTION_SPACE, temperature=temperature ,cooling_rate=cooling_rate, 
     #             recover = False, verbose=1)
-    cost, found_time, total_time = agent.learn(f"{args.outdir}/aigers/netlist.aig", ACTION_SPACE)
+    cost, found_time, total_time = agent.learn(f"{args.outdir}/aigers/netlist.aig", ACTION_SPACE, verbose=1)
 
     # cost = agent.post_learning(f"{args.outdir}/aigers/netlist_best.aig", args.output)
     cost = agent.post_learning(f"{args.outdir}/aigers/netlist_best.aig", args.output)
