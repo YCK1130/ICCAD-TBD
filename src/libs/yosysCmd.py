@@ -1,7 +1,7 @@
 import os
 import subprocess
 import platform
-from libs.utils import parse_lib, parse_netlist, TmpDir, seperate_lines
+from libs.utils import parse_lib, parse_netlist, TmpDir, seperate_lines, replace_assign_with_buffer_in_file
 from libs.libgen import gate_cost_estimator, generate_lib_file
 from libs.abc_commands import ACTION_SPACE
 from pathlib import Path
@@ -57,6 +57,7 @@ class AigBase:
         self.lib_file = lib_file if lib_file != None else  f"{self.libDir}/optimized_lib.lib"
         self.ACTION_SPACE = ACTION_SPACE
         self.state = None
+        self.name_cost = None
         
     def get_module_names(self, verilog_file):
         yosys_script = f"read_verilog {verilog_file}; hierarchy -auto-top; ls;"
@@ -115,6 +116,11 @@ class AigBase:
         if aig_file == None: aig_file = self.aig_file
         if lib_file == None: lib_file = self.lib_file
         proc = subprocess.check_output([yosys, "-p", f"read_aiger {aig_file}; abc -exe {abc_binary} -liberty {lib_file}; clean; rename -top {module_name[1:]}; write_verilog -noattr {netlist_file}"])
+        for cell_name, cost in self.name_cost:
+            gate_type = cell_name.split('_')[0]
+            if(gate_type == 'buf'):
+                replace_assign_with_buffer_in_file(netlist_file, cell_name)
+                break;
         # lines = seperate_lines(proc)
     def generate_optimized_lib(self, library: str):
         with open(library, 'r') as f:
@@ -135,6 +141,7 @@ class AigBase:
                 f.write(cleaned_netlist)
             # Generate a list of best pairs(gate names, min costs) for each gate type
             name_cost = gate_cost_estimator(f"{self.parseDir}/test.json", library, self.cost_function)
+            self.name_cost = name_cost
             print("All gate costs estimated successfully!")
             # Generate the optimized lib file with the name_cost pairs
             print(f"Writing to {self.lib_file}")

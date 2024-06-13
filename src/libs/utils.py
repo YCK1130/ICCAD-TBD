@@ -1,6 +1,35 @@
 import json
 from pathlib import Path
 
+import re
+
+def replace_assign_with_buffer_in_file(input_file, buffer_name):
+    # Read the Verilog file
+    with open(input_file, 'r') as file:
+        verilog_code = file.read()
+    
+    # Define the pattern to match `assign a = b;`
+    pattern = r'assign\s+(\w+)\s*=\s*(\w+)\s*;'
+    
+    # Initialize a counter for unique buffer names
+    buffer_counter = 1
+    
+    # Function to replace matched pattern with buffer gate
+    def replace_match(match):
+        nonlocal buffer_counter
+        a = match.group(1)
+        b = match.group(2)
+        # Create a unique buffer gate name
+        buffer_name = f"_buffer{buffer_counter}"
+        buffer_counter += 1
+        return f'buf_8 {buffer_name} (\n   .A({b}),\n   .Y({a})\n   );'
+    
+    # Replace all matches in the input Verilog code
+    new_verilog_code = re.sub(pattern, replace_match, verilog_code)
+    
+    # Write the transformed Verilog code to the output file
+    with open(input_file, 'w') as file:
+        file.write(new_verilog_code)
 
 def dict_append(d: dict, key: str, value: any) -> dict:
     if key in d:
