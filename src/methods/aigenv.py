@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 import os
 import timeit
-
+from pathlib import Path
 from gymnasium import spaces
 from libs.yosysCmd import AigBase
 from libs.abc_commands import ACTION_SPACE
@@ -32,7 +32,11 @@ class AigEnv(AigBase, gym.Env):
         self.obs_shape = (len(state), )
         self.observation_space = spaces.Box(low=0, high=min(max(state)*max(state),1e5), shape=self.obs_shape, dtype=np.int32)
         # print(self.observation_space)
-        self.previous_cost = self.best_cost = 0
+        
+        self.previous_cost = self.best_cost = self.run_best_cost = self.evaluate(self.aig_file)
+        self.last_best_timestamp = timeit.default_timer()
+        self.last_best_step = 0
+        
         aig_file = self.aig_file
         if '.aig' in aig_file:
             filename = aig_file.split('.aig')[0]
@@ -56,13 +60,21 @@ class AigEnv(AigBase, gym.Env):
         self.verilog_to_aig(self.netlist)
         
     def reset(self, seed=None, *args, **kwargs):
-        recover = os.path.exists(self.best_aig_file)
-        cost = self.evaluate(self.best_aig_file if recover else self.aig_file)
-        self.previous_cost = self.best_cost = cost
-        
+        recover = os.path.exists(self.best_aig_file) and timeit.default_timer() - self.last_best_timestamp > 60 * 60
+        if not recover:
+            self.verilog_to_aig(self.netlist)
+            
+        if recover: self.save_best(self.best_aig_file, self.aig_file)
+        cost = self.evaluate(self.aig_file)
+        # best score does not reset
+        self.previous_cost = self.run_best_cost = cost
+        self.last_best_step = self.current_step
         state, _ = self.take_step([0])
         self.state = np.reshape(state, self.obs_shape).astype(np.int32)
-        print('Reseting... Current best: ', self.best_cost)
+        print(f'Reseting...')
+        print(f'Current best: {self.best_cost}')
+        print(f'Run best: {self.run_best_cost}')
+        print(f'Current cost: {cost}')
         return self.state, {}
         
     def post_learning(self, aig_file: str, output):
@@ -77,31 +89,50 @@ class AigEnv(AigBase, gym.Env):
         return cost
         
     def __get_reward(self, cost: float):
-        return self.previous_cost - cost
+        reward = self.previous_cost - cost
+        # if self.current_step < 1000:
+        #     if reward > 0:
+        #         return 0
+        #     else:
+        #         return -0.01
+        if reward > 0 and cost < self.best_cost:
+            return reward
+        return reward / 10
     
     def step(self, action):
         state, changed = self.take_step(action)
         self.current_step += 1
+        # state = self.observation_space.sample()
+        print(f'\rstep: {self.current_step}', end='')
+        if self.current_step> 500 and self.current_step % 500 == 1:
+            print()
         cost = self.evaluate(self.aig_file)
         
-        if cost < self.best_cost:
-            print(f"Saving Best... {cost}")
-            self.best_cost = cost
-            self.save_best(self.aig_file, self.best_aig_file)
+        if cost < self.run_best_cost:
+            self.run_best_cost = cost
+            print(f"\rImproving...{cost}", end='')
+            self.last_best_timestamp = timeit.default_timer()
+            self.last_best_step = self.current_step
+            if self.run_best_cost < self.best_cost:
+                self.best_cost = self.run_best_cost
+                self.save_best(self.aig_file, self.best_aig_file)
+                print(f"\rSaving Best... {cost}", end='')
+            print()
         reward = self.__get_reward(cost)
+        
         now = timeit.default_timer()
         done = now - start > self.timelimit
-        return np.reshape(state, self.obs_shape).astype(np.int32), reward, False, done , {'changed': changed , 'cost': cost}
+        truncate = self.current_step - self.last_best_step > len(self.ACTION_SPACE) * 3
+        return np.reshape(state, self.obs_shape).astype(np.int32), reward, truncate, done , {'changed': changed , 'cost': cost}
     def render(self):
         pass
     def close(self):
         cost = self.evaluate(self.best_aig_file)
         print('Final cost: ', cost)
-        pass
-
+        return cost, self.last_best_timestamp - start
 
 register(
      id="aigenv",
      entry_point="methods.aigenv:AigEnv",
-     max_episode_steps=1e7,
+     max_episode_steps=1e5,
 )

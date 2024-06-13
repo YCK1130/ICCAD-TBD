@@ -43,6 +43,7 @@ class Greedy(AigBase):
         best_aig_file = f"{filename}_best.aig"
 
         start = timeit.default_timer()
+        best_time = timeit.default_timer()
         previous_cost = float('inf')
         i = 0
         while True:
@@ -69,6 +70,7 @@ class Greedy(AigBase):
                     if cost < cmd_best_cost:
                         cmd_best_cost = cost
                         self.save_best(new_aig_file, best_aig_file)
+                        best_time = timeit.default_timer()
                         best_cmd = cmd
                 # else:
                 #     cost = previous_cost 
@@ -94,6 +96,7 @@ class Greedy(AigBase):
 
         print('Total Optimization Time: ' + str(stop - start))
         # Path(best_aig_file).replace(aig_file)    
+        return best_cost, best_time - start, stop - start
         
 
         

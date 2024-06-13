@@ -51,6 +51,7 @@ class Simulated_Annealing(AigBase):
 
         i = 0
         start = timeit.default_timer()
+        best_time = timeit.default_timer()
         # run the optimization once to set the initial energy (cost) of the system
         if verbose > 0:
             print('Initializing annealing ..')
@@ -128,6 +129,7 @@ class Simulated_Annealing(AigBase):
                     self.save_best(aig_file, best_aig_file)
                     best_cost = cost
                     best_iter = number_of_accepted_optimizations
+                    best_time = timeit.default_timer()
                 i += 1
                 if verbose > 1:
                     print()
@@ -152,3 +154,4 @@ class Simulated_Annealing(AigBase):
         stop = timeit.default_timer()
         if verbose > 0:
             print('Total Optimization Time: ' + str(stop - start))
+        return best_cost, best_time - start, stop - start
