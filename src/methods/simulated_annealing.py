@@ -47,7 +47,7 @@ class Simulated_Annealing(AigBase):
         best_aig_file = f"{filename}_best.aig"
         
         if temperature == None: temperature=self.temperature
-        if cooling_rate == None: cooling_rate=self.temperature
+        if cooling_rate == None: cooling_rate=self.cooling_rate
 
         i = 0
         start = timeit.default_timer()
