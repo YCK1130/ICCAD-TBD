@@ -107,7 +107,7 @@ class Simulated_Annealing(AigBase):
                     Path(new_aig_file).replace(aig_file)
                     previous_cost = cost
                     number_of_accepted_optimizations += 1
-                else:
+                elif cost > previous_cost:
                     delta_cost = cost - previous_cost
                     probability_of_acceptance = math.exp((- delta_cost) / temperature)
                     if verbose > 1:
