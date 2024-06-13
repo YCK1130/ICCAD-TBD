@@ -1,5 +1,5 @@
 ACTION_SPACE = [
-    '',
+    # '',
     'rewrite',
     'rewrite -z',
     'refactor',
