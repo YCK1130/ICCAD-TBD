@@ -54,9 +54,9 @@ class Simulated_Annealing(AigBase):
         best_time = timeit.default_timer()
         # run the optimization once to set the initial energy (cost) of the system
         if verbose > 0:
-            print('Initializing annealing ..')
+            print('Start Annealing ...')
             print('Current temperature: ' + str(temperature))
-            print('----------------')
+            print('---------------------')
         
         self.aig_to_netlist(f"{self.outdir}/netlist.v", self.module_name, aig_file=best_aig_file if recover else aig_file, lib_file=f"{self.libDir}/optimized_lib.lib")
         cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function)
@@ -66,7 +66,7 @@ class Simulated_Annealing(AigBase):
         best_iter = 0
         i += 1
         if verbose > 0:
-            print('System initialized with cost: ' + str(cost))
+            print('Initialized with cost: ' + str(cost))
             print('Starting annealing ..')
             print()
         while True:
@@ -80,7 +80,7 @@ class Simulated_Annealing(AigBase):
                     print('Temperature: ' + str(temperature))
                     print('Current cost: ' + str(previous_cost))
                     print('Current best: ' + str(best_cost) + f' (stored at {best_iter})')
-                    print('----------------')
+                    print('---------------------')
             
             
                 # Pick an optimization at random
@@ -101,7 +101,7 @@ class Simulated_Annealing(AigBase):
                 if cost < previous_cost:
                     if verbose > 1:
                         print('The optimization reduced the cost!')
-                        print('Accepting it ..')
+                        print('Accepting the optimization ...')
                         print('Cost reduced from ' + str(previous_cost) + ' to ' + str(cost))
                     # current_design_file = nxt_design_file
                     Path(new_aig_file).replace(aig_file)
@@ -111,19 +111,18 @@ class Simulated_Annealing(AigBase):
                     delta_cost = cost - previous_cost
                     probability_of_acceptance = math.exp((- delta_cost) / temperature)
                     if verbose > 1:
-                        print('The optimization didn\'t reduce the cost, the system looks to be still hot.')
-                        print('The probability of acceptance is: ' + str(probability_of_acceptance))
-                        print('Uniformly generating a number to see if we accept it ..')
+                        print('The optimization didn\'t reduce the cost !')
+                        print('The probability of acceptance is: ' + str(probability_of_acceptance))\
                     if random.uniform(0, 1.0) < probability_of_acceptance:
                         if verbose > 1:
-                            print('Accepting it ..')
+                            print('Accepting the optimization ...')
                         # current_design_file = nxt_design_file
                         Path(new_aig_file).replace(aig_file)
                         previous_cost = cost
                         number_of_accepted_optimizations += 1
                     else:
                         if verbose > 1:
-                            print('Rejected ..')
+                            print('Rejected the optimization ...')
                         pass
                 if cost < best_cost:
                     self.save_best(aig_file, best_aig_file)
@@ -140,7 +139,7 @@ class Simulated_Annealing(AigBase):
             if temperature <= 0.1:
                 if verbose > 0:    
                     print('System has sufficiently cooled down ..')
-                    print('Shutting down simulation ..')
+                    print('Shutting down ...')
                     print()
                 break
 
@@ -154,4 +153,5 @@ class Simulated_Annealing(AigBase):
         stop = timeit.default_timer()
         if verbose > 0:
             print('Total Optimization Time: ' + str(stop - start))
+            print('Best Optimization Time: ' + str(best_time - start)) 
         return best_cost, best_time - start, stop - start

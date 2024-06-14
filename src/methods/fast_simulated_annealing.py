@@ -47,7 +47,7 @@ class Fast_Simulated_Annealing(AigBase):
         best_time = timeit.default_timer()
         # run the optimization once to set the initial energy (cost) of the system
         if verbose > 0:
-            print('Initializing annealing ..')
+            print('Start annealing ..')
             print('----------------')
         
         self.aig_to_netlist(f"{self.outdir}/netlist.v", self.module_name, aig_file=best_aig_file if recover else aig_file, lib_file=f"{self.libDir}/optimized_lib.lib")
@@ -59,8 +59,8 @@ class Fast_Simulated_Annealing(AigBase):
         i += 1
         _iter = 1
         if verbose > 0:
-            print('System initialized with origin_cost: ' + str(origin_cost))
-            print('Starting annealing ..')
+            print('Initialized with origin_cost: ' + str(origin_cost))
+            print('Start annealing ..')
             print()
         uphill, change = self.collect_rollout(aig_file, new_aig_file, commands, origin_cost)
         temperature = self.calcT(_iter, uphill, change, P, c, k)
@@ -97,7 +97,7 @@ class Fast_Simulated_Annealing(AigBase):
                 if cost < previous_cost:
                     if verbose > 1:
                         print('The optimization reduced the cost!')
-                        print('Accepting it ..')
+                        print('Accept the optimization ...')
                         print('Cost reduced from ' + str(previous_cost) + ' to ' + str(cost))
                     # current_design_file = nxt_design_file
                     Path(new_aig_file).replace(aig_file)
@@ -107,19 +107,18 @@ class Fast_Simulated_Annealing(AigBase):
                     delta_cost = cost - previous_cost
                     probability_of_acceptance = math.exp((- delta_cost) / temperature)
                     if verbose > 1:
-                        print('The optimization didn\'t reduce the cost, the system looks to be still hot.')
+                        print('The optimization didn\'t reduce the cost!')
                         print('The probability of acceptance is: ' + str(probability_of_acceptance))
-                        print('Uniformly generating a number to see if we accept it ..')
                     if random.uniform(0, 1.0) < probability_of_acceptance:
                         if verbose > 1:
-                            print('Accepting it ..')
+                            print('Accept the optimization ...')
                         # current_design_file = nxt_design_file
                         Path(new_aig_file).replace(aig_file)
                         previous_cost = cost
                         number_of_accepted_optimizations += 1
                     else:
                         if verbose > 1:
-                            print('Rejected ..')
+                            print('Reject the optimization ...')
                         pass
                 if cost < best_cost:
                     self.save_best(aig_file, best_aig_file)
@@ -136,7 +135,7 @@ class Fast_Simulated_Annealing(AigBase):
             if temperature <= 0.1 and _iter > k:
                 if verbose > 0:    
                     print('System has sufficiently cooled down ..')
-                    print('Shutting down simulation ..')
+                    print('Shutting down ...')
                     print()
                 break
             _iter += 1
