@@ -41,6 +41,7 @@ class Fast_Simulated_Annealing(AigBase):
             filename = aig_file
         new_aig_file = f"{filename}_new.aig"
         best_aig_file = f"{filename}_best.aig"
+        self.save_best(aig_file, best_aig_file)
         
         i = 0
         start = timeit.default_timer()

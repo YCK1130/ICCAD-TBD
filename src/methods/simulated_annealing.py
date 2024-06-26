@@ -45,6 +45,7 @@ class Simulated_Annealing(AigBase):
             filename = aig_file
         new_aig_file = f"{filename}_new.aig"
         best_aig_file = f"{filename}_best.aig"
+        self.save_best(aig_file, best_aig_file)
         
         if temperature == None: temperature=self.temperature
         if cooling_rate == None: cooling_rate=self.cooling_rate
