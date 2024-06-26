@@ -34,7 +34,7 @@ class Greedy(AigBase):
         cost = cost_estimator(output, self.stdlib, self.cost_function)
         return cost
     
-    def learn(self, aig_file: str, commands: list):
+    def learn(self, aig_file: str, commands: list, verbose=0):
         if '.aig' in aig_file:
             filename = aig_file.split('.aig')[0]
         else:
