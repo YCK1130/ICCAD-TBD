@@ -46,6 +46,7 @@ The framework supports several optimization methods:
 - sa (Simulated Annealng): A probabilistic technique for approximating the global optimum of a given function.
 - fsa (Fast Simulated Annealing): A faster variant of simulated annealing.
 - greedy (Greedy): A simple, heuristic-based optimization method.
+- rl (Reinforcement Learning (A2C))(default): A RL-based method, refer to https://stable-baselines3.readthedocs.io/en/master/modules/a2c.html for more information.
 
 ```sh 
 python3 main.py -library <path_to_library_json> -netlist <path_to_netlist_v> -cost_function <path_to_cost_function> -output <path_to_output_netlist_v> --method <method>
