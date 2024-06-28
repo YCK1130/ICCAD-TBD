@@ -51,31 +51,30 @@ def generate_2_input_verilog_file(gate_name, output_filename):
     with open(output_filename, 'w') as file:
         file.write(final_content)
 
-def gate_cost_estimator(parsedLib, oriLib, cost_estimator):
+def gate_cost_estimator(parsedLib:str, oriLib, cost_estimator):
     name_cost = []
     with open(parsedLib, 'r') as f:
         lib = json.load(f)
-    if not Path('../data/verilog').exists():
-        Path('../data/verilog').mkdir(parents=True, exist_ok=True)
-    if not Path('../data/cost').exists():
-        Path('../data/cost').mkdir(parents=True, exist_ok=True)
+    baseDir = "/".join(parsedLib.split('/')[:-1])
+    Path(f'{baseDir}/verilog').mkdir(parents=True, exist_ok=True)
+    Path(f'{baseDir}/cost').mkdir(parents=True, exist_ok=True)
         
     for cell in lib['types']:
         name_cost.append((cell, 0))
         for cell_name in lib['types'][cell]:
             # print(cell_name)
             if(cell != 'buf' and cell != 'not'):
-                generate_2_input_verilog_file(cell_name, f'../data/verilog/{cell_name}.v')
+                generate_2_input_verilog_file(cell_name, f'{baseDir}/verilog/{cell_name}.v')
             else:
-                generate_1_input_verilog_file(cell_name, f'../data/verilog/{cell_name}.v')
-            proc = subprocess.check_output([cost_estimator, '-library', f'{oriLib}', '-netlist', f'../data/verilog/{cell_name}.v', '-output', f'../data/cost/{cell_name}.out'])
+                generate_1_input_verilog_file(cell_name, f'{baseDir}/verilog/{cell_name}.v')
+            proc = subprocess.check_output([cost_estimator, '-library', f'{oriLib}', '-netlist', f'{baseDir}/verilog/{cell_name}.v', '-output', f'{baseDir}/cost/{cell_name}.out'])
             line = proc.decode("utf-8").split('\n')
             cost = float(line[0].split('=')[1].strip())
             # print(cost)
             if name_cost[-1][1] > cost or not name_cost[-1][1]:
                 name_cost[-1] = (cell_name, cost)
-    subprocess.run(['rm -rf ../data/verilog/*'], shell=True)
-    subprocess.run(['rm -rf ../data/cost/*'], shell=True)
+    subprocess.run([f'rm -rf {baseDir}/verilog/*'], shell=True)
+    subprocess.run([f'rm -rf {baseDir}/cost/*'], shell=True)
     return name_cost
     # return data
 

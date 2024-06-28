@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument('--outdir', '-od', type=str, default='../data',
                         help='Path to the output directory')
     parser.add_argument('--method', '-m', type=str, default='sa',
-                        help='Optimization method: Simulated_Annealing (sa), greedy, a2c')
+                        help='Optimization method: Simulated_Annealing (sa), greedy')
     return parser.parse_args()
 
 SEED = 1234
@@ -71,7 +71,10 @@ if __name__ == "__main__":
     cost = agent.post_learning(f"{args.outdir}/aigers/netlist_best.aig", args.output)
     print(f"Final cost: {cost}")
     with open(f"{args.outdir}/results.txt" , 'w') as f:
-        f.writelines([f"Final cost: {cost}", f"Found Time: {found_time}", f"Total Time: {total_time}"])
+        f.write(f"Final cost: {cost}\n")
+        f.write(f"Total Time: {total_time}\n")
+        f.write(f"Found Time: {found_time}\n")
+        # f.writelines([f"Final cost: {cost}", f"Found Time: {found_time}", f"Total Time: {total_time}"])
 
 # sample command: 
 # python3 main.py -library ../release/lib/lib1.json -netlist ../release/netlists/design1.v -cost_function ../release/cost_estimators/cost_estimator_1

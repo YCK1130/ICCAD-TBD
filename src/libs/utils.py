@@ -101,6 +101,13 @@ def seperate_lines(lines: str)-> list[str]:
         print(f"Error running [seperate_lines]: {e}")
         raise
 
+def removeDir(dir_path: Path):
+    for file in dir_path.iterdir():
+        if file.is_file():
+            file.unlink(missing_ok=True)
+        if file.is_dir():
+            removeDir(file)
+    dir_path.rmdir()
 class TmpDir:
     def __init__(self, tmp_dir: Path):
         if isinstance(tmp_dir, str):
@@ -115,6 +122,4 @@ class TmpDir:
         if exc_type:
             print(f"Error: {exc_val}")
             print(f"Traceback: {exc_tb}")
-        for file in self.tmp_dir.iterdir():
-            file.unlink(missing_ok=True)
-        self.tmp_dir.rmdir()
+        removeDir(self.tmp_dir)

@@ -120,7 +120,7 @@ class AigBase:
             gate_type = cell_name.split('_')[0]
             if(gate_type == 'buf'):
                 replace_assign_with_buffer_in_file(netlist_file, cell_name)
-                break;
+                break
         # lines = seperate_lines(proc)
     def generate_optimized_lib(self, library: str):
         with open(library, 'r') as f:
@@ -173,8 +173,10 @@ class AigBase:
                 # and
                 states.append(int(stats[9]))
                 # lev
+                if '=' in stats[-1]:
+                    stats[-1] = stats[-1].replace('=', '')
                 try:
-                    lev = int(stats[12])
+                    lev = int(stats[-1])
                 except:
                     print(stats)
                     raise
@@ -204,4 +206,6 @@ class AigBase:
         return self.state, changed
     
     def save_best(self, source:str, target:str):
+        shutil.copy(source, target)
+    def copy(self, source:str, target:str):
         shutil.copy(source, target)

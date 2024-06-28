@@ -53,9 +53,12 @@ class Fast_Simulated_Annealing(AigBase):
         
         self.aig_to_netlist(f"{self.outdir}/netlist.v", self.module_name, aig_file=best_aig_file if recover else aig_file, lib_file=f"{self.libDir}/optimized_lib.lib")
         origin_cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function)
+        self.save_best(aig_file, best_aig_file)
         # current_design_file = aig_file
         # nxt_design_file = new_aig_file
-        previous_cost = best_cost = origin_cost
+        self.normalized_factor = 2
+        self.normalized_factor = origin_cost
+        previous_cost = best_cost = 1
         best_iter = 0
         i += 1
         _iter = 1
@@ -63,7 +66,7 @@ class Fast_Simulated_Annealing(AigBase):
             print('System initialized with origin_cost: ' + str(origin_cost))
             print('Starting annealing ..')
             print()
-        uphill, change = self.collect_rollout(aig_file, new_aig_file, commands, origin_cost)
+        uphill, change = self.collect_rollout(aig_file, new_aig_file, commands, 1)
         temperature = self.calcT(_iter, uphill, change, P, c, k)
         while True:
             number_of_accepted_optimizations = 0
@@ -75,8 +78,8 @@ class Fast_Simulated_Annealing(AigBase):
                 if verbose > 1 or (verbose == 1 and _trial % 10 == 0):
                     print('Iteration: ' + str(i))
                     print('Temperature: ' + str(temperature))
-                    print('Current cost: ' + str(previous_cost))
-                    print('Current best: ' + str(best_cost) + f' (stored at {best_iter})')
+                    print('Current cost: ' + str(previous_cost * self.normalized_factor))
+                    print('Current best: ' + str(best_cost * self.normalized_factor) + f' (stored at {best_iter})')
                     print('----------------')
             
             
@@ -90,7 +93,7 @@ class Fast_Simulated_Annealing(AigBase):
                 nxt_design_file = new_aig_file
                 if changed:
                     self.aig_to_netlist( f"{self.outdir}/netlist.v", self.module_name, aig_file=nxt_design_file, lib_file=f"{self.libDir}/optimized_lib.lib" )
-                    cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function)
+                    cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function) / self.normalized_factor
                 else:
                     cost = previous_cost
                 total_costs[_trial] = cost
@@ -101,7 +104,7 @@ class Fast_Simulated_Annealing(AigBase):
                         print('Accepting it ..')
                         print('Cost reduced from ' + str(previous_cost) + ' to ' + str(cost))
                     # current_design_file = nxt_design_file
-                    Path(new_aig_file).replace(aig_file)
+                    self.copy(new_aig_file, aig_file)
                     previous_cost = cost
                     number_of_accepted_optimizations += 1
                 elif cost > previous_cost:
@@ -115,7 +118,7 @@ class Fast_Simulated_Annealing(AigBase):
                         if verbose > 1:
                             print('Accepting it ..')
                         # current_design_file = nxt_design_file
-                        Path(new_aig_file).replace(aig_file)
+                        self.copy(new_aig_file, aig_file)
                         previous_cost = cost
                         number_of_accepted_optimizations += 1
                     else:
@@ -156,15 +159,21 @@ class Fast_Simulated_Annealing(AigBase):
         return best_cost, best_time - start, stop - start
     
     def collect_rollout(self, aig_file: str, new_aig_file , commands, base_cost):
-        costs = np.array([0]*100, dtype=np.float32)
+        num = 10
         
-        for i in range(100):
+        costs = np.array([0]*num, dtype=np.float32)
+        
+        for i in range(num):
             self.improve_aig(aig_file, list(np.random.choice(commands, min(3, len(commands)))), replace=False)
             self.aig_to_netlist( f"{self.outdir}/netlist.v", self.module_name, aig_file=new_aig_file, lib_file=f"{self.libDir}/optimized_lib.lib" )
             cost = cost_estimator(f"{self.outdir}/netlist.v", self.stdlib, self.cost_function)
-            costs[i] = cost
+            costs[i] = cost / self.normalized_factor
         uphill = np.average([c for c in costs if c > base_cost])
         change = np.average([c - base_cost for c in costs])
+        if not math.isfinite(uphill):
+            uphill = 0
+        if not math.isfinite(change):
+            change = 0
         return uphill, change
     
     def calcT(self, i , uphill, change, P, c, k ):

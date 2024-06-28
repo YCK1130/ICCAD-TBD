@@ -2,7 +2,6 @@ import gymnasium as gym
 import numpy as np
 import os
 import timeit
-from pathlib import Path
 from gymnasium import spaces
 from libs.yosysCmd import AigBase
 from libs.abc_commands import ACTION_SPACE
@@ -18,6 +17,10 @@ class AigEnv(AigBase, gym.Env):
                  cost_function: str,
                  action_num: int = 3,
                  timelimit: float = 60 * 60 * 3 - 60,
+                 period_callback = {
+                     'period': 100,
+                     'callback': lambda *x: print(*x)
+                 },
                  **kwargs
                  ):
         AigBase.__init__(self, outdir, cost_function, **kwargs)
@@ -45,7 +48,14 @@ class AigEnv(AigBase, gym.Env):
         self.new_aig_file = f"{filename}_new.aig"
         self.best_aig_file = f"{filename}_best.aig"
         self.timelimit = timelimit
+        self.save_best(self.aig_file, self.best_aig_file)
         
+        try:
+            self.period = period_callback['period']
+            self.callback = period_callback['callback']
+        except:
+            self.period = None
+            self.callback = None
         print("Initializing...")
         print("-----------------Initialized-----------------")
         print("Observation space: \t", self.observation_space)
@@ -108,6 +118,12 @@ class AigEnv(AigBase, gym.Env):
             print()
         cost = self.evaluate(self.aig_file)
         
+        if self.period and self.callback and self.current_step % self.period==0:
+            try:
+                self.callback(cost, timeit.default_timer() - start, self.last_best_timestamp - start)
+            except Exception as e:
+                print("[Error Period Callback] ", e)
+            
         if cost < self.run_best_cost:
             self.run_best_cost = cost
             print(f"\rImproving...{cost}", end='')
@@ -134,5 +150,5 @@ class AigEnv(AigBase, gym.Env):
 register(
      id="aigenv",
      entry_point="methods.aigenv:AigEnv",
-     max_episode_steps=1e5,
+     max_episode_steps=2e4,
 )

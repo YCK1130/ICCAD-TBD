@@ -1,6 +1,7 @@
 # data
 data/*
 data/aigers/*
+data*
 data/verilog/*
 data/cost/*
 data/lib/*
