@@ -1,5 +1,6 @@
 This is a project for 2024 ICCAD constest and finl project for IEDA@NTU, TW.
 
+This is developed under python version 3.11.5
 # Netlist Optimization Framework
 
 This repository contains a framework for optimizing logic synthesis using various methods, including Reinforcement Learning (RL), Simulated Annealing, Fast Simulated Annealing, and Greedy algorithms. The framework is designed to generate an optimized library (.lib) and convert unprocessed netlists (.v) into AIG files, which are then optimized and mapped back to primitive gate netlists.
@@ -30,6 +31,9 @@ The given unprocessed netlist (.v) is converted into an AIG file using Yosys and
 Move to the the directory containing main.py
 ```sh 
 cd src
+python --version
+# Python 3.11.5
+pip -r requirements.txt
 ```
 Run the main.py script with the appropriate arguments:
 ```sh 

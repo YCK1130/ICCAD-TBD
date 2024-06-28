@@ -7,6 +7,8 @@ data/cost/*
 data/lib/*
 data/parsed/*
 
+*.tgz
+*.zip
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
